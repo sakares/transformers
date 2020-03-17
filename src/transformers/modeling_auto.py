@@ -990,17 +990,14 @@ class AutoModelForTokenClassification:
             config (:class:`~transformers.PretrainedConfig`):
                 The model class to instantiate is selected based on the configuration class:
 
-                - isInstance of `distilbert` configuration class: :class:`~transformers.DistilBertForTokenClassification` (DistilBERT model)
+                - isInstance of `distilbert` configuration class: :class:`~transformers.DistilBertModelForTokenClassification` (DistilBERT model)
                 - isInstance of `xlm` configuration class: :class:`~transformers.XLMForTokenClassification` (XLM model)
-                - isInstance of `xlm roberta` configuration class: :class:`~transformers.XLMRobertaForTokenClassification` (XLMRoberta model)
-                - isInstance of `bert` configuration class: :class:`~transformers.BertForTokenClassification` (Bert model)
-<<<<<<< HEAD
+                - isInstance of `xlm roberta` configuration class: :class:`~transformers.XLMRobertaModelForTokenClassification` (XLMRoberta model)
+                - isInstance of `bert` configuration class: :class:`~transformers.BertModelForTokenClassification` (Bert model)
                 - isInstance of `albert` configuration class: :class:`~transformers.AlbertForTokenClassification` (AlBert model)
-=======
->>>>>>> afaa322fa2b8b03e38309fc5f0a280447de8f0a9
-                - isInstance of `xlnet` configuration class: :class:`~transformers.XLNetForTokenClassification` (XLNet model)
-                - isInstance of `camembert` configuration class: :class:`~transformers.CamembertForTokenClassification` (Camembert model)
-                - isInstance of `roberta` configuration class: :class:`~transformers.RobertaForTokenClassification` (Roberta model)
+                - isInstance of `xlnet` configuration class: :class:`~transformers.XLNetModelForTokenClassification` (XLNet model)
+                - isInstance of `camembert` configuration class: :class:`~transformers.CamembertModelForTokenClassification` (Camembert model)
+                - isInstance of `roberta` configuration class: :class:`~transformers.RobertaModelForTokenClassification` (Roberta model)
 
         Examples::
 

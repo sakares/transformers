@@ -61,7 +61,7 @@ class ModelTester:
         self.hidden_dropout_prob = 0.1
         self.attention_probs_dropout_prob = 0.1
         self.max_position_embeddings = 20
-        self.eos_token_ids = [2]
+        self.eos_token_id = 2
         self.pad_token_id = 1
         self.bos_token_id = 0
         torch.manual_seed(0)
@@ -82,7 +82,7 @@ class ModelTester:
             dropout=self.hidden_dropout_prob,
             attention_dropout=self.attention_probs_dropout_prob,
             max_position_embeddings=self.max_position_embeddings,
-            eos_token_ids=[2],
+            eos_token_id=self.eos_token_id,
             bos_token_id=self.bos_token_id,
             pad_token_id=self.pad_token_id,
         )
@@ -214,7 +214,7 @@ class BartHeadTests(unittest.TestCase):
             decoder_ffn_dim=32,
             max_position_embeddings=48,
             output_past=output_past,
-            eos_token_ids=[2],
+            eos_token_id=2,
             pad_token_id=1,
             bos_token_id=0,
         )
@@ -234,12 +234,10 @@ class BartHeadTests(unittest.TestCase):
 
     def test_lm_forward(self):
         config, input_ids, batch_size = self._get_config_and_data(output_past=False)
-        decoder_lm_labels = ids_tensor([batch_size, input_ids.shape[1]], self.vocab_size).to(torch_device)
+        lm_labels = ids_tensor([batch_size, input_ids.shape[1]], self.vocab_size).to(torch_device)
         lm_model = BartForConditionalGeneration(config)
         lm_model.to(torch_device)
-        loss, logits, enc_features = lm_model(
-            input_ids=input_ids, lm_labels=decoder_lm_labels, decoder_input_ids=input_ids
-        )
+        loss, logits, enc_features = lm_model(input_ids=input_ids, lm_labels=lm_labels, decoder_input_ids=input_ids)
         expected_shape = (batch_size, input_ids.shape[1], config.vocab_size)
         self.assertEqual(logits.shape, expected_shape)
         self.assertIsInstance(loss.item(), float)
@@ -276,7 +274,7 @@ class BartHeadTests(unittest.TestCase):
             decoder_ffn_dim=32,
             max_position_embeddings=48,
             output_past=True,
-            eos_token_ids=[2],
+            eos_token_id=2,
             pad_token_id=1,
             bos_token_id=0,
         )
@@ -285,9 +283,14 @@ class BartHeadTests(unittest.TestCase):
 
         max_length = 5
         new_input_ids = lm_model.generate(
-            input_ids.clone(), num_return_sequences=1, num_beams=2, no_repeat_ngram_size=3, max_length=max_length
+            input_ids.clone(),
+            do_sample=True,
+            num_return_sequences=1,
+            num_beams=2,
+            no_repeat_ngram_size=3,
+            max_length=max_length,
         )
-        self.assertEqual(new_input_ids.shape, (input_ids.shape[0], max_length - 1))
+        self.assertEqual(new_input_ids.shape, (input_ids.shape[0], max_length))
         # TODO(SS): uneven length batches, empty inputs
 
     def test_shift_tokens_right(self):
@@ -324,6 +327,17 @@ class BartHeadTests(unittest.TestCase):
         attention_mask = input_ids.ne(1).to(torch_device)
         lm_model = BartForConditionalGeneration(config).eval().to(torch_device).half()
         lm_model(input_ids, attention_mask=attention_mask)
+
+    def test_default_generate_kwargs(self):
+        config, input_ids, _ = self._get_config_and_data(output_past=True)
+        model = BartForConditionalGeneration(config).eval().to(torch_device)
+        model.generate(input_ids)
+        model.generate(num_beams=4, do_sample=True, early_stopping=False, num_return_sequences=3)
+
+    def test_dummy_inputs(self):
+        config, *_ = self._get_config_and_data(output_past=True)
+        model = BartForConditionalGeneration(config).eval().to(torch_device)
+        model(**model.dummy_inputs)
 
     def test_prepare_bart_decoder_inputs(self):
         config, *_ = self._get_config_and_data(output_past=False)
@@ -381,7 +395,7 @@ TOLERANCE = 1e-4
 
 
 @require_torch
-class BartModelIntegrationTest(unittest.TestCase):
+class BartModelIntegrationTests(unittest.TestCase):
     @slow
     def test_inference_no_head(self):
         model = BartModel.from_pretrained("bart-large").to(torch_device)
@@ -431,25 +445,7 @@ class BartModelIntegrationTest(unittest.TestCase):
             self.assertIsNotNone(model)
 
     @slow
-    def test_cnn_summarization_same_as_fairseq_easy(self):
-        hf = BartForConditionalGeneration.from_pretrained("bart-large-cnn", output_past=True,).to(torch_device)
-        tok = BartTokenizer.from_pretrained("bart-large")
-        text = " (CNN)The Palestinian Authority officially became the 123rd member of the International Criminal Court on Wednesday, a step that gives the court jurisdiction over alleged crimes in Palestinian"
-        tokens = tok.encode(text, return_tensors="pt").to(torch_device)
-        extra_len = 20
-        gen_tokens = hf.generate(
-            tokens,
-            num_beams=4,
-            max_length=extra_len + 2,
-            do_sample=False,
-            decoder_start_token_id=hf.config.eos_token_ids[0],
-        )  # repetition_penalty=10.,
-        expected_result = "<s>The Palestinian Authority officially became the 123rd member of the International Criminal Court on Wednesday."
-        generated = [tok.decode(g,) for g in gen_tokens]
-        self.assertEqual(expected_result, generated[0])
-
-    @slow
-    def test_cnn_summarization_same_as_fairseq_hard(self):
+    def test_cnn_summarization_same_as_fairseq(self):
         hf = BartForConditionalGeneration.from_pretrained("bart-large-cnn", output_past=True,).to(torch_device)
         tok = BartTokenizer.from_pretrained("bart-large")
 
@@ -487,7 +483,7 @@ class BartModelIntegrationTest(unittest.TestCase):
             no_repeat_ngram_size=3,
             do_sample=False,
             early_stopping=True,
-            decoder_start_token_id=hf.config.eos_token_ids[0],
+            decoder_start_token_id=hf.config.eos_token_id,
         )
 
         decoded = [

@@ -392,6 +392,7 @@ if is_tf_available():
         TFXLMModel,
         TFXLMWithLMHeadModel,
         TFXLMForSequenceClassification,
+        TFXLMForTokenClassification,
         TFXLMForQuestionAnsweringSimple,
         TF_XLM_PRETRAINED_MODEL_ARCHIVE_MAP,
     )

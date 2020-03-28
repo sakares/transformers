@@ -825,3 +825,60 @@ class TFXLMForQuestionAnsweringSimple(TFXLMPreTrainedModel):
         ]  # Keep mems, hidden states, attentions if there are in it
 
         return outputs  # start_logits, end_logits, (hidden_states), (attentions)
+
+
+@add_start_docstrings(
+    """XLM Model with a token classification head on top (a linear layer on top of
+    the hidden-states output) e.g. for Named-Entity-Recognition (NER) tasks. """,
+    XLM_START_DOCSTRING,
+)
+class TFXLMForTokenClassification(TFXLMPreTrainedModel):
+    def __init__(self, config, *inputs, **kwargs):
+        super().__init__(config, *inputs, **kwargs)
+        self.num_labels = config.num_labels
+
+        self.transformer = TFXLMMainLayer(config, name="transformer")
+        self.dropout = tf.keras.layers.Dropout(config.dropout)
+        self.classifier = tf.keras.layers.Dense(
+            config.num_labels, kernel_initializer=get_initializer(config.init_std), name="classifier"
+        )
+
+    @add_start_docstrings_to_callable(XLM_INPUTS_DOCSTRING)
+    def call(self, inputs, **kwargs):
+        r"""
+    Returns:
+        :obj:`tuple(torch.FloatTensor)` comprising various elements depending on the configuration (:class:`~transformers,XLMConfig`) and inputs:
+        scores (:obj:`Numpy array` or :obj:`tf.Tensor` of shape :obj:`(batch_size, sequence_length, config.num_labels)`):
+            Classification scores (before SoftMax).
+        hidden_states (:obj:`tuple(tf.Tensor)`, `optional`, returned when :obj:`config.output_hidden_states=True`):
+            tuple of :obj:`tf.Tensor` (one for the output of the embeddings + one for the output of each layer)
+            of shape :obj:`(batch_size, sequence_length, hidden_size)`.
+
+            Hidden-states of the model at the output of each layer plus the initial embedding outputs.
+        attentions (:obj:`tuple(tf.Tensor)`, `optional`, returned when ``config.output_attentions=True``):
+            tuple of :obj:`tf.Tensor` (one for each layer) of shape
+            :obj:`(batch_size, num_heads, sequence_length, sequence_length)`:
+
+            Attentions weights after the attention softmax, used to compute the weighted average in the self-attention heads.
+
+    Examples::
+
+        import tensorflow as tf
+        from transformers import XLMTokenizer, TFXLMForTokenClassification
+
+        tokenizer = XLMTokenizer.from_pretrained('xlm-mlm-17-1280')
+        model = TFXLMForTokenClassification.from_pretrained('xlm-mlm-17-1280')
+        input_ids = tf.constant(tokenizer.encode("Hello, my dog is cute"))[None, :]  # Batch size 1
+        outputs = model(input_ids)
+        scores = outputs[0]
+        """
+        outputs = self.transformer(inputs, **kwargs)
+
+        sequence_output = outputs[0]
+
+        sequence_output = self.dropout(sequence_output, training=kwargs.get("training", False))
+        logits = self.classifier(sequence_output)
+
+        outputs = (logits,) + outputs[2:]  # add hidden states and attention if they are here
+
+        return outputs  # scores, (hidden_states), (attentions)

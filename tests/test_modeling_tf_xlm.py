@@ -30,6 +30,7 @@ if is_tf_available():
         TFXLMModel,
         TFXLMWithLMHeadModel,
         TFXLMForSequenceClassification,
+        TFXLMForTokenClassification,
         TFXLMForQuestionAnsweringSimple,
         TF_XLM_PRETRAINED_MODEL_ARCHIVE_MAP,
     )
@@ -39,7 +40,13 @@ if is_tf_available():
 class TFXLMModelTest(TFModelTesterMixin, unittest.TestCase):
 
     all_model_classes = (
-        (TFXLMModel, TFXLMWithLMHeadModel, TFXLMForSequenceClassification, TFXLMForQuestionAnsweringSimple)
+        (
+            TFXLMModel,
+            TFXLMWithLMHeadModel,
+            TFXLMForSequenceClassification,
+            TFXLMForTokenClassification,
+            TFXLMForQuestionAnsweringSimple
+        )
         if is_tf_available()
         else ()
     )
@@ -263,6 +270,30 @@ class TFXLMModelTest(TFModelTesterMixin, unittest.TestCase):
 
             self.parent.assertListEqual(list(result["logits"].shape), [self.batch_size, self.type_sequence_label_size])
 
+        def create_and_check_xlm_for_token_classification(
+            self,
+            config,
+            input_ids,
+            token_type_ids,
+            input_lengths,
+            sequence_labels,
+            token_labels,
+            is_impossible_labels,
+            input_mask,
+        ):
+            config.num_labels = self.num_labels
+
+            model = TFXLMForTokenClassification(config)
+
+            inputs = {"input_ids": input_ids, "lengths": input_lengths}
+            (logits,) = model(inputs)
+            result = {
+                "logits": logits.numpy(),
+            }
+            self.parent.assertListEqual(
+                list(result["logits"].shape), [self.batch_size, self.seq_length, self.num_labels]
+            )
+
         def prepare_config_and_inputs_for_common(self):
             config_and_inputs = self.prepare_config_and_inputs()
             (
@@ -305,6 +336,10 @@ class TFXLMModelTest(TFModelTesterMixin, unittest.TestCase):
     def test_xlm_sequence_classif(self):
         config_and_inputs = self.model_tester.prepare_config_and_inputs()
         self.model_tester.create_and_check_xlm_sequence_classif(*config_and_inputs)
+
+    def test_xlm_token_classification(self):
+        config_and_inputs = self.model_tester.prepare_config_and_inputs()
+        self.model_tester.create_and_check_xlm_for_token_classification(*config_and_inputs)
 
     @slow
     def test_model_from_pretrained(self):

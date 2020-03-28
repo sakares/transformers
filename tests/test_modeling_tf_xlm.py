@@ -45,7 +45,7 @@ class TFXLMModelTest(TFModelTesterMixin, unittest.TestCase):
             TFXLMWithLMHeadModel,
             TFXLMForSequenceClassification,
             TFXLMForTokenClassification,
-            TFXLMForQuestionAnsweringSimple
+            TFXLMForQuestionAnsweringSimple,
         )
         if is_tf_available()
         else ()

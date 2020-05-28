@@ -1736,7 +1736,7 @@ def pipeline(
         pipeline('sentiment-analysis')
 
         # Question answering pipeline, specifying the checkpoint identifier
-        pipeline('question-answering', model='distilbert-base-cased-distilled-squad', tokenizer='bert-base-cased')
+        pipeline('question-answering', model='distilbert-base-cased-distilled-squad', tokenizer='distilbert-base-cased')
 
         # Named entity recognition pipeline, passing in a specific model and tokenizer
         model = AutoModelForTokenClassification.from_pretrained("dbmdz/bert-large-cased-finetuned-conll03-english")
